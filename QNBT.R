@@ -36,3 +36,18 @@ summary(PADUS_Pano$Count_2008)
 PADUS_Pano[PADUS_Pano$Count_2008 > 1100, ]
 PADUS_Pano.mat <- as.matrix(PADUS_Pano[,32:39])
 rcorr(PADUS_Pano.mat)
+
+# GLM
+counts.N <- PADUS_NRRS.mat[,1]
+outcome.N <- PADUS_NRRS.mat[,2:8]
+glm.N <- glm(counts.N ~ outcome.N, family = gaussian())
+anova(glm.N)
+summary(glm.N)
+plot(glm.N)
+
+counts.P <- PADUS_Pano.mat[,1]
+outcome.P <- PADUS_Pano.mat[,2:8]
+glm.P <- glm(counts.P ~ outcome.P, family = gaussian())
+anova(glm.P)
+summary(glm.P)
+plot(glm.P)
