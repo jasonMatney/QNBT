@@ -140,12 +140,31 @@ m_glm <- glm(y ~ log(x), start=mu_start, family = Gamma(link = "log"), data=DF.m
 m_glm_ci <- confint(m_glm)
 display(m_glm)
 coef(m_glm)
+summary.glm(m_glm)
+
+# Model pearson statistic
+# The sum of the squared Pearson residuals is exactly equal 
+# to the Pearson χ2 test statistic for lack of fit. 
+# So if your fitted model (i.e., the glm object) is called logistic.fit, 
+# the following code would return the test statistic:
+sum(residuals(m_glm, type = "pearson")^2)
+# 580.5844
+
+# whereas the following code
+# will get you the G^2 test statistic, 
+# just the same as deviance(m_glm) provides:
+sum(residuals(m_glm, type = "deviance")^2)
+#  819.1204
+
 
 # residual plot
 plot(x=log(DF.mean$x), y=resid(m_glm),  ylab="Residuals", xlab="Panoramio data", main="Panoramio residuals")
+abline(0, 0, col='red')        
 logLik(m_glm)
 AIC(m_glm)
 BIC(m_glm)
+
+# plots
 plot(m_glm)
 
 # fitted
@@ -166,6 +185,7 @@ basicPlot <- function(...){
   axis(side = 1, col="grey")
   axis(side = 2, col="grey")
 }
+
 basicPlot()
 lines(DF.mean$x, log.lin.pred, col="red", lwd=2)
 legend(x="bottomright", bty="n", lwd=c(2,2), lty=c(NA,1),
@@ -173,8 +193,12 @@ legend(x="bottomright", bty="n", lwd=c(2,2), lty=c(NA,1),
        col=c("#00526D","red"), pch=c(1,NA))
 
 # pearson statistic 
-head(DF.mean)
-rcorr(DF.mean[,1], DF.mean[,2], type=c("pearson"))
+with(DF.mean, cor(log(x), y))
+# Pearson's r = 0.3085629 indicates a weak negative relationship.
+with(DF.mean, cor(log(x), y))^2
+# To get the coefficient of determination, add "^2" on the end to square it. 
+# r^2 = 0.09582922
+
 
 ##---------------------##
 # ---- sample code ---- #
