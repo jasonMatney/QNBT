@@ -9,8 +9,8 @@ for (package in c('sp',
                   'ggplot2',
                   'Hmisc',
                   'gvlma',
-                  'minpack.lm',
-                  'heR.Misc')) {
+                  'minpack.lm','arm',
+                  'bpp')) {
   if (!require(package, character.only=T, quietly=T)) {
     install.packages(package, repos="http://cran.us.r-project.org")
     library(package, character.only=T)
@@ -41,24 +41,11 @@ PADUS_Pano[PADUS_Pano$Count_2008 > 1100, ]
 PADUS_Pano.mat <- as.matrix(PADUS_Pano[,32:39])
 rcorr(PADUS_Pano.mat)
 
-# GLM
-counts.N <- PADUS_NRRS.mat[,1]
-outcome.N <- PADUS_NRRS.mat[,2:8]
-glm.N <- glm(counts.N ~ outcome.N, family = gaussian())
-anova(glm.N)
-summary(glm.N)
-# plot(glm.N)
-
-counts.P <- PADUS_Pano.mat[,1]
-outcome.P <- PADUS_Pano.mat[,2:8]
-glm.P <- glm(counts.P ~ outcome.P, family = gaussian())
-anova(glm.P)
-summary(glm.P)
-# plot(glm.P)
 
 ##----------##
 ## analysis ##
 ##----------##
+# data prep
 PADUS_NRRS.dat <- as.data.frame(PADUS_NRRS.mat)
 PADUS_Pano.dat <- as.data.frame(PADUS_Pano.mat)
 drops <- c("Count_")
@@ -71,6 +58,9 @@ head(PADUS_Pano.dat)
 PADUS_NRRS.dat$NRRS_sum <- rowSums(PADUS_NRRS.dat, na.rm = TRUE)
 PADUS_Pano.dat$Pano_sum <- rowSums(PADUS_Pano.dat, na.rm = TRUE)
 
+PADUS_NRRS.dat$NRRS_mean <- rowMeans(PADUS_NRRS.dat, na.rm = TRUE)
+PADUS_Pano.dat$Pano_mean <- rowMeans(PADUS_Pano.dat, na.rm = TRUE)
+
 head(PADUS_NRRS.dat)
 head(PADUS_Pano.dat)
 
@@ -82,64 +72,113 @@ head(PADUS_Pano.dat)
 # head(DF)
 # nrow(DF)
 
-DF <- as.data.frame(cbind(PADUS_NRRS.dat$NRRS_sum,PADUS_Pano.dat$Pano_sum))
-names(DF) <- c("NRRS","Pano")
-head(DF)
+DF.sum <- as.data.frame(cbind(PADUS_NRRS.dat$NRRS_sum,PADUS_Pano.dat$Pano_sum))
+names(DF.sum) <- c("y","x")
+head(DF.sum)
 
-# remove 2008 zero visitation rows
-DF <- DF[apply(DF["NRRS"],1,function(z) !any(z==0)),] 
-DF <- DF[apply(DF["Pano"],1,function(z) !any(z==0)),] 
+DF.mean <- as.data.frame(cbind(PADUS_NRRS.dat$NRRS_mean,PADUS_Pano.dat$Pano_mean))
+names(DF.mean) <- c("y","x")
+head(DF.mean)
 
-head(DF)
-nrow(DF)
-DF.mat <- as.matrix(DF)
-nrow(DF.mat)
+# remove zero visitation rows
+DF.sum <- DF.sum[apply(DF.sum,1,function(z) !any(z==0)),] 
 
-# data prep
-# pano.2008 <- DF[,"Pano_2008"]
-# nrrs.2008 <- DF[,"NRRS_2008"]
-# x.2009 <- PADUS_Pano.mat[,3]
-head(DF)
-pano <- DF[,"Pano"]
-nrrs <- DF[,"NRRS"]
+# remove zero visitation rows
+DF.mean <- DF.mean[apply(DF.mean,1,function(z) !any(z==0)),] 
 
-plot(pano, nrrs, xlab="pano", ylab="nrrs")
+# view
+plot(DF.mean[,"x"], DF.mean[,"y"], log="xy", xlab="pano", ylab="nrrs")
 
-DF.dat <- DF
-names(DF.dat) <- c("y","x")
-head(DF.dat)
+##----------------------------------------------------##
+##-- Non linear curve fitting to untransformed data --##
+##----------------------------------------------------##
 
-# fit a power function to the log-transformed data
-z <- nls(y ~ Y_0 * x^B, data=DF.dat, start=list(Y_0=500, B=0.6))
+
+# fit a power function to the non-transformed data
+z <- nls(y ~ Y_0 * x^B, data=DF.mean, start=list(Y_0=500, B=0.6))
 
 summary(z)             # parameter estimates and overall model fit
 coef(z)                # model coefficients (means, slopes, intercepts)
 # confint(z)             # confidence intervals for parameters
 
-plot(y ~ x, data=DF.dat,xlab='pano', ylab='nrrs', log = "xy", main = "Log-log Plot")
-box()
-# ticks <- seq(0, 10, by=1)
-# labels <- sapply(ticks, function(i) as.expression(bquote(10^ .(i))))
-# axis(1, at=c(0.01, 0.1, 1, 10, 100), labels=labels)
-
+plot(y ~ x, data=DF.mean,xlab='pano', ylab='nrrs', log = "xy", main = "Log-log Plot")
 lines(seq(0,10000,0.1), 
       predict(z, 
               newdata=data.frame(x = seq(0,10000,0.1))), col='red')
 
+##------------------------------##
+##-- generalized linear model --##
+##------------------------------##
+# data prep
+# one way to fit a power law is to log10 transformal both variables. 
+e <- exp(1) 
+plot(y ~ x, data=DF.mean, xlab='pano', ylab='nrrs', log = "yx",main = "Linear fit to natural log transformed data (mean) - B=0.3221555 Yo=474.9223")
+linear.fit <- lm(log(y) ~ log(x), data=DF.mean) # natural log
+linear.fit$coefficients # these are you parameters
+B <- as.numeric(linear.fit$coefficients[2])  # B
+Y_0 <- as.numeric(e^linear.fit$coefficients[1])  # Y_0
+x <- DF.mean$x
+B
+Y_0
+head(x)
+ypred <- Y_0*x^B   # this is the predicted curve 
+DF.results <- cbind(ypred, x)
+head(DF.results)
+lines(ypred ~ x, data=DF.results, xlab='pano', ylab='ypred - nrrs',  col='red')
 
-### lm ###
-zlm <- lm(y ~ x, data = dat.2008)
-plot(lm(y ~ x, data = dat.2008))
-#abline(zlm)
-lines(seq(0,7,0.1), 
-      predict(zlm, 
-              newdata=data.frame(x = seq(0,7,0.1))))
+## --- ##
+## GLM ##
+## --- ##
+mu_start <- c(linear.fit$coefficients[1],linear.fit$coefficients[2])
+model.glm <- glm(y ~ log(x), start=mu_start, family=Gamma(link=log), data=DF.mean)
 
-resid(z)               # residuals
-fitted(z)              # predicted values
+df.pred <- as.data.frame(seq(0,341,1))
+predict(model.glm, newdata=df.pred)
 
-predict(z, newdata=log.2009) # predicted values for new observations
-# anova(z1, z2)          # compare fits of 2 models, "full" vs "reduced"
-logLik(z)              # log-likelihood of the parameters
-AIC(z)                 # Akaike Information Criterion
-BIC(z)                  # Bayesian Information Criterion
+fit.glm <- fitted(model.glm)
+resid(model.glm)
+logLik(model.glm)
+AIC(model.glm)
+BIC(model.glm)
+plot(model.glm)
+
+
+log.lin.mod <- glm(log(y) ~ x, data=DF.mean, 
+                   family=gaussian(link="identity"))
+display(log.lin.mod)
+log.lin.sig <- summary(log.lin.mod)$dispersion
+log.lin.pred <- exp(predict(log.lin.mod) + 0.5*log.lin.sig)
+basicPlot <- function(...){
+  plot(y ~ x, data=DF.mean, bty="n", lwd=2,
+       main="Pano vs. NRRS", log="xy",
+       col="#00526D", 
+       xlab="Pano", 
+       ylab="NRRS", ...)
+  axis(side = 1, col="grey")
+  axis(side = 2, col="grey")
+}
+basicPlot()
+lines(DF.mean$x, log.lin.pred, col="red", lwd=2)
+legend(x="bottomright", bty="n", lwd=c(2,2), lty=c(NA,1),
+       legend=c("observation", "log-transformed LM"),
+       col=c("#00526D","red"), pch=c(1,NA))
+
+head(DF.mean)
+rcorr(DF.mean[,1], DF.mean[,2], type=c("pearson"))
+
+# 
+# zlm <- glm(y ~ x, data = DF.mean)
+# plot(y ~ x, data = DF.mean, log="xy")
+# #abline(zlm)
+# lines(seq(0,1000,0.1), 
+#       predict(zlm, 
+#               newdata=data.frame(x = seq(0,1000,0.1))))
+# 
+# resid(z)               # residuals
+# fitted(z)              # predicted values
+# 
+# predict(z, newdata=log.2009) # predicted values for new observations
+# # anova(z1, z2)          # compare fits of 2 models, "full" vs "reduced"
+# logLik(z)              # log-likelihood of the parameters
+# AIC(z)                 # Akaike Information Criterion
+# BIC(z)                  # Bayesian Information Criterion
