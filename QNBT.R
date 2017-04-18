@@ -9,8 +9,10 @@ for (package in c('sp',
                   'ggplot2',
                   'Hmisc',
                   'gvlma',
-                  'minpack.lm','arm',
-                  'bpp')) {
+                  'minpack.lm',
+                  'arm',
+                  'bpp',
+                  'bbmle')) {
   if (!require(package, character.only=T, quietly=T)) {
     install.packages(package, repos="http://cran.us.r-project.org")
     library(package, character.only=T)
@@ -30,7 +32,6 @@ summary(PADUS_NRRS$Freq_2008)
 # Grand Canyon and Yosemite National Parks
 PADUS_NRRS[PADUS_NRRS$Freq_2008 > 40000,]
 PADUS_NRRS.mat <- as.matrix(PADUS_NRRS[,32:39])
-rcorr(PADUS_NRRS.mat)
 
 # PADUS - Pano
 plot(PADUS_Pano$Count_, PADUS_Pano$Count_2008)
@@ -41,10 +42,9 @@ PADUS_Pano[PADUS_Pano$Count_2008 > 1100, ]
 PADUS_Pano.mat <- as.matrix(PADUS_Pano[,32:39])
 rcorr(PADUS_Pano.mat)
 
-
-##----------##
-## analysis ##
-##----------##
+##---------------##
+## QNBT analysis ##
+##---------------##
 # data prep
 PADUS_NRRS.dat <- as.data.frame(PADUS_NRRS.mat)
 PADUS_Pano.dat <- as.data.frame(PADUS_Pano.mat)
@@ -92,16 +92,13 @@ plot(DF.mean[,"x"], DF.mean[,"y"], log="xy", xlab="pano", ylab="nrrs")
 ##----------------------------------------------------##
 ##-- Non linear curve fitting to untransformed data --##
 ##----------------------------------------------------##
-
-
 # fit a power function to the non-transformed data
 z <- nls(y ~ Y_0 * x^B, data=DF.mean, start=list(Y_0=500, B=0.6))
+summary(z)            # parameter estimates and overall model fit
+coef(z)               # model coefficients (means, slopes, intercepts)
+# confint(z)          # confidence intervals for parameters
 
-summary(z)             # parameter estimates and overall model fit
-coef(z)                # model coefficients (means, slopes, intercepts)
-# confint(z)             # confidence intervals for parameters
-
-plot(y ~ x, data=DF.mean,xlab='pano', ylab='nrrs', log = "xy", main = "Log-log Plot")
+plot(y ~ x, data=DF.mean, xlab='pano', ylab='nrrs', log = "xy", main = "nonlinear least squares (nls) log-log plot")
 lines(seq(0,10000,0.1), 
       predict(z, 
               newdata=data.frame(x = seq(0,10000,0.1))), col='red')
@@ -109,45 +106,57 @@ lines(seq(0,10000,0.1),
 ##------------------------------##
 ##-- generalized linear model --##
 ##------------------------------##
-# data prep
-# one way to fit a power law is to log10 transformal both variables. 
+# data prep #
+# one way to fit a power law is to log10 transformal both variables.  
+# However, we want to use the natural log as this was the Nature paper's approach
 e <- exp(1) 
-plot(y ~ x, data=DF.mean, xlab='pano', ylab='nrrs', log = "yx",main = "Linear fit to natural log transformed data (mean) - B=0.3221555 Yo=474.9223")
+plot(y ~ x, data=DF.mean, 
+     xlab='pano', 
+     ylab='nrrs', 
+     log = "yx",
+     main = "Linear fit to natural log transformed data (mean) - B=0.3221555 Yo=474.9223")
+
 linear.fit <- lm(log(y) ~ log(x), data=DF.mean) # natural log
 linear.fit$coefficients # these are you parameters
+
 B <- as.numeric(linear.fit$coefficients[2])  # B
-Y_0 <- as.numeric(e^linear.fit$coefficients[1])  # Y_0
+print(Y_0 <- as.numeric(e^linear.fit$coefficients[1]))  # Y_0
 x <- DF.mean$x
-B
-Y_0
+print(paste("B:", B))
+print(paste("Yo:", Y_0))
 head(x)
 ypred <- Y_0*x^B   # this is the predicted curve 
 DF.results <- cbind(ypred, x)
 head(DF.results)
 lines(ypred ~ x, data=DF.results, xlab='pano', ylab='ypred - nrrs',  col='red')
 
-## --- ##
-## GLM ##
-## --- ##
+## ------------- ##
+## GLM model fit ##
+## ------------- ##
+# First, we’ll fit a model to our data with glm() 
+# to make sure we can recover the parameters underlying our simulated data:
 mu_start <- c(linear.fit$coefficients[1],linear.fit$coefficients[2])
-model.glm <- glm(y ~ log(x), start=mu_start, family=Gamma(link=log), data=DF.mean)
+m_glm <- glm(y ~ log(x), start=mu_start, family = Gamma(link = "log"), data=DF.mean)
+m_glm_ci <- confint(m_glm)
+display(m_glm)
+coef(m_glm)
 
+# residual plot
+plot(x=log(DF.mean$x), y=resid(m_glm),  ylab="Residuals", xlab="Panoramio data", main="Panoramio residuals")
+logLik(m_glm)
+AIC(m_glm)
+BIC(m_glm)
+plot(m_glm)
+
+# fitted
+fit_glm <- fitted(m_glm)
 df.pred <- as.data.frame(seq(0,341,1))
-predict(model.glm, newdata=df.pred)
+y_pred <- predict(model.glm, newdata=df.pred)
+plot(df.pred[,1], y_pred)
 
-fit.glm <- fitted(model.glm)
-resid(model.glm)
-logLik(model.glm)
-AIC(model.glm)
-BIC(model.glm)
-plot(model.glm)
-
-
-log.lin.mod <- glm(log(y) ~ x, data=DF.mean, 
-                   family=gaussian(link="identity"))
-display(log.lin.mod)
-log.lin.sig <- summary(log.lin.mod)$dispersion
-log.lin.pred <- exp(predict(log.lin.mod) + 0.5*log.lin.sig)
+# prediction
+log.lin.sig <- summary(m_glm)$dispersion
+log.lin.pred <- exp(predict(m_glm) + 0.5*log.lin.sig)
 basicPlot <- function(...){
   plot(y ~ x, data=DF.mean, bty="n", lwd=2,
        main="Pano vs. NRRS", log="xy",
@@ -163,10 +172,13 @@ legend(x="bottomright", bty="n", lwd=c(2,2), lty=c(NA,1),
        legend=c("observation", "log-transformed LM"),
        col=c("#00526D","red"), pch=c(1,NA))
 
+# pearson statistic 
 head(DF.mean)
 rcorr(DF.mean[,1], DF.mean[,2], type=c("pearson"))
 
-# 
+##---------------------##
+# ---- sample code ---- #
+##---------------------##
 # zlm <- glm(y ~ x, data = DF.mean)
 # plot(y ~ x, data = DF.mean, log="xy")
 # #abline(zlm)
