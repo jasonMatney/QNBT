@@ -8,7 +8,8 @@ for (package in c('lubridate',
   }
 }
 list.files()
-setwd("C:\\Users\\jamatney\\Desktop\\PhD\\PPL_reservationdata_csv")
+dir <- "C:\\Users\\jamatney\\Desktop\\PhD\\PPL_reservationdata_csv"
+setwd(dir)
 
 # read PPL reservation data
 PPL <- read.csv('PPL_reservationdata.csv')
@@ -55,9 +56,9 @@ for(i in 1:length(PPL.list)){
   PPL.df <- PPL.list[[i]]
   for(j in PPL.years){
     PPL.year <- PPL.df[PPL.df$StartYear == j,]
-    PPL.file <- paste0("PPL.",i, ".", j, ".csv")
+    PPL.file <- paste0("PPL_",i, "_", j, ".csv")
     print(paste0("writing file: ", PPL.file))
-    write.csv(PPL.year, file = PPL.file)
+    write.csv(PPL.year, paste0(dir,"\\PPL_binned_years\\",PPL.file))
   }
 }
 
