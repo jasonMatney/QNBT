@@ -46,4 +46,18 @@ PPL.3 <- add_column(PPL.3, month(dmy(PPL.3$StartDate)), .after = "StartDate")
 PPL.3 <- add_column(PPL.3, day(dmy(PPL.3$StartDate)), .after = "StartDate")
 setnames(PPL.3, old = c("day(dmy(PPL.3$StartDate))","month(dmy(PPL.3$StartDate))","year(dmy(PPL.3$StartDate))"), new = c("StartDay","StartMonth","StartYear"))
 
+# make list of binned data frames
+PPL.list <- list(PPL.1,PPL.2,PPL.3)
+PPL.years <- c(2008:2014)
+
+# Loop through each year of each binned data frame and write csv
+for(i in 1:length(PPL.list)){
+  PPL.df <- PPL.list[[i]]
+  for(j in PPL.years){
+    PPL.year <- PPL.df[PPL.df$StartYear == j,]
+    PPL.file <- paste0("PPL.",i, ".", j, ".csv")
+    print(paste0("writing file: ", PPL.file))
+    write.csv(PPL.year, file = PPL.file)
+  }
+}
 
