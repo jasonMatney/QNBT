@@ -1,7 +1,10 @@
 rm(list=ls())
 for (package in c('lubridate', 
                   'tibble', 
-                  'data.table')) {
+                  'data.table',
+                  'sp',
+                  'rgdal',
+                  'sqldf')) {
   if (!require(package, character.only=T, quietly=T)) {
     install.packages(package, repos="http://cran.us.r-project.org")
     library(package, character.only=T)
@@ -52,13 +55,19 @@ PPL.list <- list(PPL.1,PPL.2,PPL.3)
 PPL.years <- c(2008:2014)
 
 # Loop through each year of each binned data frame and write csv
+# for(i in 1:length(PPL.list)){
+#   PPL.df <- PPL.list[[i]]
+#   for(j in PPL.years){
+#     PPL.year <- PPL.df[PPL.df$StartYear == j,]
+#     PPL.file <- paste0("PPL_",i, "_", j, ".csv")
+#     print(paste0("writing file: ", PPL.file))
+#     write.csv(PPL.year, paste0(dir,"\\PPL_binned_years\\",PPL.file))
+#   }
+# }
+
 for(i in 1:length(PPL.list)){
   PPL.df <- PPL.list[[i]]
-  for(j in PPL.years){
-    PPL.year <- PPL.df[PPL.df$StartYear == j,]
-    PPL.file <- paste0("PPL_",i, "_", j, ".csv")
-    print(paste0("writing file: ", PPL.file))
-    write.csv(PPL.year, paste0(dir,"\\PPL_binned_years\\",PPL.file))
-  }
+  PPL.file <- paste0("PPL_",i, ".csv")
+  print(paste0("writing file: ", PPL.file))
+  write.csv(PPL.df, paste0(dir,PPL.file), row.names=FALSE)
 }
-
