@@ -11,7 +11,7 @@ for (package in c('lubridate',
   }
 }
 list.files()
-dir <- "C:\\Users\\jamatney\\Desktop\\PhD\\PPL_reservationdata_csv"
+dir <- "F:\\Parks_Paper\\PPL"
 setwd(dir)
 
 # read PPL reservation data
@@ -69,5 +69,5 @@ for(i in 1:length(PPL.list)){
   PPL.df <- PPL.list[[i]]
   PPL.file <- paste0("PPL_",i, ".csv")
   print(paste0("writing file: ", PPL.file))
-  write.csv(PPL.df, paste0(dir,PPL.file), row.names=FALSE)
+  write.csv(PPL.df, paste0(dir,"\\PPL"), row.names=FALSE)
 }
