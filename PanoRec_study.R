@@ -23,19 +23,35 @@ for (package in c('sp',
 dir <- "F:/Parks_paper" 
 setwd(dir)
 list.files()
+
 ##--------------##
 #- Load Rasters -#
 ##--------------##
-###load protected areas
+# ------------------- #
+# Dependent Variables #
+# ------------------- #
+
+## These are rasters of the raw PPL point locations - 
+
+# ... Nah ....
+
+## These are summed PPL frequencies joined to PAD polys that contain NRRS points 
+PAD_PPL_1 <- raster("raster/PAD_PPL_1")
+PAD_PPL_2 <- raster("raster/PAD_PPL_2")
+PAD_PPL_3 <- raster("raster/PAD_PPL_3")
+
+## These are the PADUS polygons which contain NRRS facilities - 
+PAD_Pano <- raster("raster/PAD_PANO")
+
+
+###load protected areas ??
 # Mparks_10km <- raster("PADUS1_4Arc10gdb/mangpark10kmZ")
 # Mparks_5km <- raster("PADUS1_4Arc10gdb/mangpark5kmZ")
 # Mparks_1km <- raster("PADUS1_4Arc10gdb/mangpark1kmZ")
 
-ppl_freq_1 <- raster("raster/ppl_freq_1")
-ppl_freq_2 <- raster("raster/ppl_freq_2")
-ppl_freq_3 <- raster("raster/ppl_freq_3")
-
-##Variables
+# --------------------- #
+# Independent Variables #
+# --------------------- #
 ###transportation/distance
 cst_distLG10km <- raster("raster/Cstdist_largN.tif")
 cst_distSM10km <- raster("raster/sml_cstN.tif")
@@ -71,89 +87,90 @@ region <- raster("raster/DivisionsN.tif")
 division <- raster("raster/RegionsN.tif")
 
 ###PPL
-PPL_1 <- read.csv(paste0(dir,"/PPL/PPL_1.csv"))
-PPL_2 <- read.csv(paste0(dir,"/PPL/PPL_2.csv"))
-PPL_3 <- read.csv(paste0(dir,"/PPL/PPL_3.csv"))
+# PPL_1 <- read.csv(paste0(dir,"/PPL/PPL_1.csv"))
+# PPL_2 <- read.csv(paste0(dir,"/PPL/PPL_2.csv"))
+# PPL_3 <- read.csv(paste0(dir,"/PPL/PPL_3.csv"))
 
 ##---------##
 #-  Stack  -#
 ##---------##
 ##10km
-ppl_freq_1[ppl_freq_1 < 0.1] <- NA 
-ppl_freq_2[ppl_freq_2 < 0.1] <- NA 
-ppl_freq_3[ppl_freq_3 < 0.1] <- NA 
+x_res = 10000
+y_res = 10000
+jet.colors <- colorRampPalette(c("grey", "yellow", "orange", "red"))
+plot(PAD_PPL_1, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="PPL frequencies within PADUS Polygons, 0 to 50 miles (travel distance), n=268392")
+plot(PAD_PPL_2, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="PPL frequencies within PADUS Polygons, 50 to 600 miles (travel distance), n=3366845")
+plot(PAD_PPL_3, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="PPL frequencies within PADUS Polygons, greater than 600 miles (travel distance), n=527731")
+plot(PAD_Pano, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="Panoramio frequencies within PAD US Polygons")
 
-plot(ppl_freq_1, col=topo.colors(100))
 
-plot(pctSeasonHomes10km, col=topo.colors(100))
+PAD_PPL_1[PAD_PPL_1 < 0.1] <- NA  
+PAD_PPL_2[PAD_PPL_2 < 0.1] <- NA 
+PAD_PPL_3[PAD_PPL_3 < 0.1] <- NA 
 
 # Resolution - 10 km
-
-ppl_freq_1_stack <- stack(ppl_freq_1, cst_distLG10km, cst_distSM10km, road_dist10km, pop2010, slope10km, elev10km, EUparks, distCoast, distwater, Urban10km, pctUrban10km, frst10km, ag10km, pctSeasonHomes10km, pctPvrty10km, pctRetired10km, pctBachdegree, state, region, division)
-ppl_freq_2_stack <- stack(ppl_freq_2, cst_distLG10km, cst_distSM10km, road_dist10km, pop2010, slope10km, elev10km, EUparks, distCoast, distwater, Urban10km, pctUrban10km, frst10km, ag10km, pctSeasonHomes10km, pctPvrty10km, pctRetired10km, pctBachdegree, state, region, division)
-ppl_freq_3_stack <- stack(ppl_freq_3, cst_distLG10km, cst_distSM10km, road_dist10km, pop2010, slope10km, elev10km, EUparks, distCoast, distwater, Urban10km, pctUrban10km, frst10km, ag10km, pctSeasonHomes10km, pctPvrty10km, pctRetired10km, pctBachdegree, state, region, division)
-
+stk <- stack(PAD_PPL_1, PAD_PPL_2, PAD_PPL_3, PAD_Pano)#, cst_distLG10km, cst_distSM10km, road_dist10km, pop2010, slope10km, elev10km, EUparks, distCoast, distwater, Urban10km, pctUrban10km, frst10km, ag10km, pctSeasonHomes10km, pctPvrty10km, pctRetired10km, pctBachdegree, state, region, division)
+plot(stk)
 ##simply correlation calculation
-jnk_1=layerStats(ppl_freq_1_stack, 'pearson', na.rm=T)
-jnk_2=layerStats(ppl_freq_2_stack, 'pearson', na.rm=T)
-jnk_3=layerStats(ppl_freq_3_stack, 'pearson', na.rm=T)
+jnk_rast <- layerStats(stk, 'pearson', na.rm=T)
+corr_matrix_10km <- jnk_rast$'pearson correlation coefficient'
+corr_matrix_10km
 
-corr_matrix_1_10km=jnk_1$'pearson correlation coefficient'
-corr_matrix_2_10km=jnk_2$'pearson correlation coefficient'
-corr_matrix_3_10km=jnk_3$'pearson correlation coefficient'
-
-corr_matrix_1_10km
-corr_matrix_2_10km
-corr_matrix_3_10km
+## Extract all values into a matrix
+valuetable <- getValues(stk)
+valuetable <- na.omit(valuetable)
+summary(valuetable)
 
 ###change into a dataframe
-stk_ppl_freq_1_10km <- as.data.frame(ppl_freq_1_stack)
-stk_ppl_freq_2_10km <- as.data.frame(ppl_freq_2_stack)
-stk_ppl_freq_3_10km <- as.data.frame(ppl_freq_3_stack)
-stk_ppl_freq_1_10km <-na.omit(stk_ppl_freq_1_10km)
-stk_ppl_freq_2_10km <-na.omit(stk_ppl_freq_2_10km)
-stk_ppl_freq_3_10km <-na.omit(stk_ppl_freq_3_10km)
+stk_10km <- as.data.frame(valuetable)
+
+summary(stk_10km)
 
 ###need to omit pano zeros to use a log transformation
-stk_2008_10km <-subset(stk_2008_10km,  Pano2008_10km != 0)
+# stk.df <-subset(stk.df,  PAD_Pano != 0)
 
 ###plot the log transformed correlations
 ###intialization
 rbPal <- colorRampPalette(c('red','blue'))
 #This adds a column of color values
 # based on the y values
-stk_2008_10km$Col <- rbPal(5)[as.numeric(cut(stk_2008_10km$Cstdist_largN,breaks = 5))]
+stk_10km$Col <- rbPal(5)[as.numeric(cut(stk_10km$Cstdist_largN,breaks = 5))]
 ##plot
-plot(log(stk_2008_10km$Pano2008_10km), log(stk_2008_10km$Park_2008_10km)) 
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_1)) 
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_2)) 
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_3)) 
 
-###model
-fit2008_10km <- lm(log(stk_2008_10km$Pano2008_10km) ~ log(stk_2008_10km$Park_2008_10km), data=stk_2008_10km)
-fit2008_10km$coefficients # these are you parameters
-summary(fit2008_10km)
 
+#--------------------#
+#--- Linear model ---#
+#--------------------#
+fit_10km <- lm(log(PAD_PPL_1) ~ log(PAD_PPL_2) + log(PAD_PPL_3) + log(pad_pano) + log(Cstdist_largN) + log(sml_cstN) + log(StatesN) + log(RegionsN), data=stk_10km)
+fit_10km$coefficients # these are you parameters
+summary(fit_10km)
+plot(fit_10km)
 # data prep #
 # one way to fit a power law is to log10 transformal both variables.  
 # However, we want to use the natural log as this was the Nature paper's approach
-e <- exp(1) 
-plot(y ~ x, data=DF.mean, 
-     xlab='pano', 
-     ylab='nrrs', 
-     log = "yx",
-     main = "Linear fit to natural log plot (mean) - B=0.3221555 Yo=474.9223")
-
-linear.fit <- lm(log(y) ~ log(x), data=DF.mean) # natural log
-linear.fit$coefficients # these are you parameters
-
-B <- as.numeric(linear.fit$coefficients[2])  # B
-Y_0 <- as.numeric(e^linear.fit$coefficients[1])  # Y_0
-x <- DF.mean$x
-print(paste("B:", B))
-print(paste("Yo:", Y_0))
-head(x)
-ypred <- Y_0*x^B   # this is the predicted curve 
-DF.results <- cbind(ypred, x)
-head(DF.results)
-lines(ypred ~ x, data=DF.results, xlab='pano', ylab='ypred - nrrs',  col='red')
+# e <- exp(1) 
+# plot(y ~ x, data=DF.mean, 
+#      xlab='pano', 
+#      ylab='nrrs', 
+#      log = "yx",
+#      main = "Linear fit to natural log plot (mean) - B=0.3221555 Yo=474.9223")
+# 
+# linear.fit <- lm(log(y) ~ log(x), data=DF.mean) # natural log
+# linear.fit$coefficients # these are you parameters
+# 
+# B <- as.numeric(linear.fit$coefficients[2])  # B
+# Y_0 <- as.numeric(e^linear.fit$coefficients[1])  # Y_0
+# x <- DF.mean$x
+# print(paste("B:", B))
+# print(paste("Yo:", Y_0))
+# head(x)
+# ypred <- Y_0*x^B   # this is the predicted curve 
+# DF.results <- cbind(ypred, x)
+# head(DF.results)
+# lines(ypred ~ x, data=DF.results, xlab='pano', ylab='ypred - nrrs',  col='red')
 
 
 ####getting rid of outliers
@@ -172,7 +189,7 @@ stk_2008_10km$Col <- rbPal(10)[as.numeric(cut(stk_2008_10km$Ag_US10kmN,breaks = 
 stk_2008_10km$Col <- rbPal(10)[as.numeric(cut(stk_2008_10km$sec00_bachplus_ofge25_pct,breaks = 10))]
 
 
-plot(log(stk_2008_10km$Pano2008_10km), log(stk_2008_10km$Park_2008_10km), col=stk_2008_10km$Col)
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_1), col=stk_10km$Col)
 fit2008_10km <- lm(Pano2008_10km ~ Park_2008_10km , data=stk_2008_10km)
 r10km2008<-summary(fit2008_10km)$r.squared
 
@@ -258,255 +275,6 @@ plot(stk_2009_10km$Pano2009_10km, stk_2009_10km$Park_2009_10km)
 fit2009_10km <- lm(Pano2009_10km ~ Park_2009_10km, data=stk_2009_10km)
 r10km2009<-summary(fit2009_10km)$r.squared
 
-##2010
-Park_2010_10km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2010_10km.tif")
-Park_2010_10km[Park_2010_10km < 0.1] <- NA 
-plot(Park_2010_10km) 
-stk_2010_10km <- stack(Pano2010_10km, Park_2010_10km)
-jnk=layerStats(stk_2010_10km, 'pearson', na.rm=T)
-corr_matrix2010_10km=jnk$'pearson correlation coefficient'
-corr_matrix2010_10km
-stk_2010_10km <- as.data.frame(stk_2010_10km)
-plot(stk_2010_10km$Pano2010_10km, stk_2010_10km$Park_2010_10km)
-fit2010_10km <- lm(Pano2010_10km ~ Park_2010_10km, data=stk_2010_10km)
-r10km2010<-summary(fit2010_10km)$r.squared
-
-##2011
-Park_2011_10km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2011_10km.tif")
-Park_2011_10km[Park_2011_10km < 0.1] <- NA 
-plot(Park_2011_10km) 
-stk_2011_10km <- stack(Pano2011_10km, Park_2011_10km)
-jnk=layerStats(stk_2011_10km, 'pearson', na.rm=T)
-corr_matrix2011_10km=jnk$'pearson correlation coefficient'
-corr_matrix2011_10km
-stk_2011_10km <- as.data.frame(stk_2011_10km)
-plot(stk_2011_10km$Pano2011_10km, stk_2011_10km$Park_2011_10km)
-fit2011_10km <- lm(Pano2011_10km ~ Park_2011_10km, data=stk_2011_10km)
-r10km2011<-summary(fit2011_10km)$r.squared
-
-##2012
-Park_2012_10km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2012_10km.tif")
-Park_2012_10km[Park_2012_10km < 0.1] <- NA 
-plot(Park_2012_10km) 
-stk_2012_10km <- stack(Pano2012_10km, Park_2012_10km)
-jnk=layerStats(stk_2012_10km, 'pearson', na.rm=T)
-corr_matrix2012_10km=jnk$'pearson correlation coefficient'
-corr_matrix2012_10km
-stk_2012_10km <- as.data.frame(stk_2012_10km)
-plot(stk_2012_10km$Pano2012_10km, stk_2012_10km$Park_2012_10km)
-fit2012_10km <- lm(Pano2012_10km ~ Park_2012_10km, data=stk_2012_10km)
-r10km2012<-summary(fit2012_10km)$r.squared
-
-##2013
-Park_2013_10km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2013_10km.tif")
-Park_2013_10km[Park_2013_10km < 0.1] <- NA 
-plot(Park_2013_10km) 
-stk_2013_10km <- stack(Pano2013_10km, Park_2013_10km)
-jnk=layerStats(stk_2013_10km, 'pearson', na.rm=T)
-corr_matrix2013_10km=jnk$'pearson correlation coefficient'
-corr_matrix2013_10km
-stk_2013_10km <- as.data.frame(stk_2013_10km)
-plot(stk_2013_10km$Pano2013_10km, stk_2013_10km$Park_2013_10km)
-fit2013_10km <- lm(Pano2013_10km ~ Park_2013_10km, data=stk_2013_10km)
-r10km2013<-summary(fit2013_10km)$r.squared
-
-##2014
-Park_2014_10km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2014_10km.tif")
-Park_2014_10km[Park_2014_10km < 0.1] <- NA 
-plot(Park_2014_10km) 
-stk_2014_10km <- stack(Pano2014_10km, Park_2014_10km)
-jnk=layerStats(stk_2014_10km, 'pearson', na.rm=T)
-corr_matrix2014_10km=jnk$'pearson correlation coefficient'
-corr_matrix2014_10km
-stk_2014_10km <- as.data.frame(stk_2014_10km)
-plot(stk_2014_10km$Pano2014_10km, stk_2014_10km$Park_2014_10km)
-fit2014_10km <- lm(Pano2014_10km ~ Park_2014_10km, data=stk_2014_10km)
-r10km2014<-summary(fit2014_10km)$r.squared
-
-###5km
-##2008
-Park_2008_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2008_5km.tif")
-Park_2008_5km[Park_2008_5km < 0.1] <- NA 
-plot(Park_2008_5km) 
-stk_2008_5km <- stack(Pano2008_5km, Park_2008_5km)
-jnk=layerStats(stk_2008_5km, 'pearson', na.rm=T)
-corr_matrix2008_5km=jnk$'pearson correlation coefficient'
-corr_matrix2008_5km
-stk_2008_5km <- as.data.frame(stk_2008_5km)
-plot(stk_2008_5km$Pano2008_5km, stk_2008_5km$Park_2008_5km)
-fit2008_5km <- lm(Pano2008_5km ~ Park_2008_5km, data=stk_2008_5km)
-r5km2008<-summary(fit2008_5km)$r.squared
-
-
-##2009
-Park_2009_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2009_5km.tif")
-Park_2009_5km[Park_2009_5km < 0.1] <- NA 
-plot(Park_2009_5km) 
-stk_2009_5km <- stack(Pano2009_5km, Park_2009_5km)
-jnk=layerStats(stk_2009_5km, 'pearson', na.rm=T)
-corr_matrix2009_5km=jnk$'pearson correlation coefficient'
-corr_matrix2009_5km
-stk_2009_5km <- as.data.frame(stk_2009_5km)
-plot(stk_2009_5km$Pano2009_5km, stk_2009_5km$Park_2009_5km)
-fit2009_5km <- lm(Pano2009_5km ~ Park_2009_5km, data=stk_2009_5km)
-r5km2009<-summary(fit2009_5km)$r.squared
-
-##2010
-Park_2010_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2010_5km.tif")
-Park_2010_5km[Park_2010_5km < 0.1] <- NA 
-plot(Park_2010_5km) 
-stk_2010_5km <- stack(Pano2010_5km, Park_2010_5km)
-jnk=layerStats(stk_2010_5km, 'pearson', na.rm=T)
-corr_matrix2010_5km=jnk$'pearson correlation coefficient'
-corr_matrix2010_5km
-stk_2010_5km <- as.data.frame(stk_2010_5km)
-plot(stk_2010_5km$Pano2010_5km, stk_2010_5km$Park_2010_5km)
-fit2010_5km <- lm(Pano2010_5km ~ Park_2010_5km, data=stk_2010_5km)
-r5km2010<-summary(fit2010_5km)$r.squared
-
-##2011
-Park_2011_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2011_5km.tif")
-Park_2011_5km[Park_2011_5km < 0.1] <- NA 
-plot(Park_2011_5km) 
-stk_2011_5km <- stack(Pano2011_5km, Park_2011_5km)
-jnk=layerStats(stk_2011_5km, 'pearson', na.rm=T)
-corr_matrix2011_5km=jnk$'pearson correlation coefficient'
-corr_matrix2011_5km
-stk_2011_5km <- as.data.frame(stk_2011_5km)
-plot(stk_2011_5km$Pano2011_5km, stk_2011_5km$Park_2011_5km)
-fit2011_5km <- lm(Pano2011_5km ~ Park_2011_5km, data=stk_2011_5km)
-r5km2011<-summary(fit2011_5km)$r.squared
-
-##2012
-Park_2012_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2012_5km.tif")
-Park_2012_5km[Park_2012_5km < 0.1] <- NA 
-plot(Park_2012_5km) 
-stk_2012_5km <- stack(Pano2012_5km, Park_2012_5km)
-jnk=layerStats(stk_2012_5km, 'pearson', na.rm=T)
-corr_matrix2012_5km=jnk$'pearson correlation coefficient'
-corr_matrix2012_5km
-stk_2012_5km <- as.data.frame(stk_2012_5km)
-plot(stk_2012_5km$Pano2012_5km, stk_2012_5km$Park_2012_5km)
-fit2012_5km <- lm(Pano2012_5km ~ Park_2012_5km, data=stk_2012_5km)
-r5km2012<-summary(fit2012_5km)$r.squared
-
-##2013
-Park_2013_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2013_5km.tif")
-Park_2013_5km[Park_2013_5km < 0.1] <- NA 
-plot(Park_2013_5km) 
-stk_2013_5km <- stack(Pano2013_5km, Park_2013_5km)
-jnk=layerStats(stk_2013_5km, 'pearson', na.rm=T)
-corr_matrix2013_5km=jnk$'pearson correlation coefficient'
-corr_matrix2013_5km
-stk_2013_5km <- as.data.frame(stk_2013_5km)
-plot(stk_2013_5km$Pano2013_5km, stk_2013_5km$Park_2013_5km)
-fit2013_5km <- lm(Pano2013_5km ~ Park_2013_5km, data=stk_2013_5km)
-r5km2013<-summary(fit2013_5km)$r.squared
-
-##2014
-Park_2014_5km <- raster("S:/cga/dbvanber/Pano_Parks/RecDotGov/Panoramio_Yearly_Raster/Pano/Park_2014_5km.tif")
-Park_2014_5km[Park_2014_5km < 0.1] <- NA 
-plot(Park_2014_5km) 
-stk_2014_5km <- stack(Pano2014_5km, Park_2014_5km)
-jnk=layerStats(stk_2014_5km, 'pearson', na.rm=T)
-corr_matrix2014_5km=jnk$'pearson correlation coefficient'
-corr_matrix2014_5km
-stk_2014_5km <- as.data.frame(stk_2014_5km)
-plot(stk_2014_5km$Pano2014_5km, stk_2014_5km$Park_2014_5km)
-fit2014_5km <- lm(Pano2014_5km ~ Park_2014_5km, data=stk_2014_5km)
-r5km2014<-summary(fit2014_5km)$r.squared
-
-###1km
-##2008
-Park_2008_1km[Park_2008_1km < 0.1] <- NA 
-plot(Park_2008_1km) 
-stk_2008_1km <- stack(Pano2008_1km, Park_2008_1km)
-jnk=layerStats(stk_2008_1km, 'pearson', na.rm=T)
-corr_matrix2008_1km=jnk$'pearson correlation coefficient'
-corr_matrix2008_1km
-stk_2008_1km <- as.data.frame(stk_2008_1km)
-plot(stk_2008_1km$Pano2008_1km, stk_2008_1km$Park_2008_1km)
-fit2008_1km <- lm(Pano2008_1km ~ Park_2008_1km, data=stk_2008_1km)
-r1km2008<-summary(fit2008_1km)$r.squared
-
-
-##2009
-Park_2009_1km[Park_2009_1km < 0.1] <- NA 
-plot(Park_2009_1km) 
-stk_2009_1km <- stack(Pano2009_1km, Park_2009_1km)
-jnk=layerStats(stk_2009_1km, 'pearson', na.rm=T)
-corr_matrix2009_1km=jnk$'pearson correlation coefficient'
-corr_matrix2009_1km
-stk_2009_1km <- as.data.frame(stk_2009_1km)
-plot(stk_2009_1km$Pano2009_1km, stk_2009_1km$Park_2009_1km)
-fit2009_1km <- lm(Pano2009_1km ~ Park_2009_1km, data=stk_2009_1km)
-r1km2009<-summary(fit2009_1km)$r.squared
-
-##2010
-Park_2010_1km[Park_2010_1km < 0.1] <- NA 
-plot(Park_2010_1km) 
-stk_2010_1km <- stack(Pano2010_1km, Park_2010_1km)
-jnk=layerStats(stk_2010_1km, 'pearson', na.rm=T)
-corr_matrix2010_1km=jnk$'pearson correlation coefficient'
-corr_matrix2010_1km
-stk_2010_1km <- as.data.frame(stk_2010_1km)
-plot(stk_2010_1km$Pano2010_1km, stk_2010_1km$Park_2010_1km)
-fit2010_1km <- lm(Pano2010_1km ~ Park_2010_1km, data=stk_2010_1km)
-r1km2010<-summary(fit2010_1km)$r.squared
-
-##2011
-Park_2011_1km[Park_2011_1km < 0.1] <- NA 
-plot(Park_2011_1km) 
-stk_2011_1km <- stack(Pano2011_1km, Park_2011_1km)
-jnk=layerStats(stk_2011_1km, 'pearson', na.rm=T)
-corr_matrix2011_1km=jnk$'pearson correlation coefficient'
-corr_matrix2011_1km
-stk_2011_1km <- as.data.frame(stk_2011_1km)
-plot(stk_2011_1km$Pano2011_1km, stk_2011_1km$Park_2011_1km)
-fit2011_1km <- lm(Pano2011_1km ~ Park_2011_1km, data=stk_2011_1km)
-r1km2011<-summary(fit2011_1km)$r.squared
-
-##2012
-Park_2012_1km[Park_2012_1km < 0.1] <- NA 
-plot(Pano2012_1km) 
-stk_2012_1km <- stack(Pano2012_1km, Park_2012_1km)
-jnk=layerStats(stk_2012_1km, 'pearson', na.rm=T)
-corr_matrix2012_1km=jnk$'pearson correlation coefficient'
-corr_matrix2012_1km
-
-stk_2012_1km <- as.data.frame(stk_2012_1km)
-stk_2012_1km <- na.omit(stk_2012_1km)
-plot(stk_2012_1km$Pano2012_1km, stk_2012_1km$Park_2012_1km)
-fit2012_1km <- lm(Pano2012_1km ~ Park_2012_1km, data=stk_2012_1km, na.rm=T)
-r1km2012<-summary(fit2012_1km)$r.squared
-
-
-cor(stk_2012_1km$Pano2012_1km, stk_2012_1km$Park_2012_1km)
-
-##2013
-Park_2013_1km[Park_2013_1km < 0.1] <- NA 
-plot(Park_2013_1km) 
-stk_2013_1km <- stack(Pano2013_1km, Park_2013_1km)
-jnk=layerStats(stk_2013_1km, 'pearson', na.rm=T)
-corr_matrix2013_1km=jnk$'pearson correlation coefficient'
-corr_matrix2013_1km
-stk_2013_1km <- as.data.frame(stk_2013_1km)
-plot(stk_2013_1km$Pano2013_1km, stk_2013_1km$Park_2013_1km)
-fit2013_1km <- lm(Pano2013_1km ~ Park_2013_1km, data=stk_2013_1km)
-r1km2013<-summary(fit2013_1km)$r.squared
-
-##2014
-Park_2014_1km[Park_2014_1km < 0.1] <- NA 
-plot(Park_2014_1km) 
-stk_2014_1km <- stack(Pano2014_1km, Park_2014_1km)
-jnk=layerStats(stk_2014_1km, 'pearson', na.rm=T)
-corr_matrix2014_1km=jnk$'pearson correlation coefficient'
-corr_matrix2014_1km
-stk_2014_1km <- as.data.frame(stk_2014_1km)
-plot(stk_2014_1km$Pano2014_1km, stk_2014_1km$Park_2014_1km)
-fit2014_1km <- lm(Park_2014_1km ~ Pano2014_1km, data=stk_2014_1km)
-r1km2014<-summary(fit2014_1km)$r.squared
-r1km2014
 
 pearsons1km<-cbind(corr_matrix2008_1km,corr_matrix2009_1km,corr_matrix2010_1km,corr_matrix2011_1km,corr_matrix2012_1km,corr_matrix2013_1km,corr_matrix2014_1km)
 colnames(rsqrd1km)<-c("corr_matrix2008_1km","corr_matrix2009_1km","corr_matrix2010_1km","corr_matrix2011_1km","corr_matrix2012_1km","corr_matrix2013_1km","corr_matrix2014_1km")
