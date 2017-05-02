@@ -43,7 +43,6 @@ PAD_PPL_3 <- raster("raster/PAD_PPL_3")
 ## These are the PADUS polygons which contain NRRS facilities - 
 PAD_Pano <- raster("raster/PAD_PANO")
 
-
 ###load protected areas ??
 # Mparks_10km <- raster("PADUS1_4Arc10gdb/mangpark10kmZ")
 # Mparks_5km <- raster("PADUS1_4Arc10gdb/mangpark5kmZ")
@@ -102,27 +101,39 @@ plot(PAD_PPL_1, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.color
 plot(PAD_PPL_2, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="PPL frequencies within PADUS Polygons, 50 to 600 miles (travel distance), n=3366845")
 plot(PAD_PPL_3, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="PPL frequencies within PADUS Polygons, greater than 600 miles (travel distance), n=527731")
 plot(PAD_Pano, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12), main="Panoramio frequencies within PAD US Polygons")
+dev.off()
 
-
-PAD_PPL_1[PAD_PPL_1 < 0.1] <- NA  
+PAD_PPL_1[PAD_PPL_1 < 0.1] <- NA
 PAD_PPL_2[PAD_PPL_2 < 0.1] <- NA 
-PAD_PPL_3[PAD_PPL_3 < 0.1] <- NA 
+PAD_PPL_3[PAD_PPL_3 < 0.1] <- NA
+PAD_PPL_Pool[PAD_PPL_Pool < 0.1] <- NA
 
 # Resolution - 10 km
-stk <- stack(PAD_PPL_1, PAD_PPL_2, PAD_PPL_3, PAD_Pano)#, cst_distLG10km, cst_distSM10km, road_dist10km, pop2010, slope10km, elev10km, EUparks, distCoast, distwater, Urban10km, pctUrban10km, frst10km, ag10km, pctSeasonHomes10km, pctPvrty10km, pctRetired10km, pctBachdegree, state, region, division)
-plot(stk)
+stk_full <- stack(PAD_PPL_1, PAD_PPL_2, PAD_PPL_3, PAD_Pano, cst_distLG10km, cst_distSM10km, road_dist10km, pop2010, slope10km, elev10km, EUparks, distCoast, distwater, Urban10km, pctUrban10km, frst10km, ag10km, pctSeasonHomes10km, pctPvrty10km, pctRetired10km, pctBachdegree, state, region, division)
+stk_sub <- stack(PAD_PPL_1, PAD_PPL_2, PAD_PPL_3, PAD_Pano)
+plot(stk_sub, axes=T, box=T, legend=T, maxpixels= x_res * y_res, col=jet.colors(12))
+
 ##simply correlation calculation
-jnk_rast <- layerStats(stk, 'pearson', na.rm=T)
+jnk_rast <- layerStats(stk_sub, 'pearson', na.rm=T)
 corr_matrix_10km <- jnk_rast$'pearson correlation coefficient'
 corr_matrix_10km
 
 ## Extract all values into a matrix
-valuetable <- getValues(stk)
-valuetable <- na.omit(valuetable)
-summary(valuetable)
+valuetable_full <- getValues(stk_full)
+valuetable_full <- as.data.frame(valuetable_full)
+valuetable_full <- na.omit(valuetable_full)
+
+valuetable_sub <- getValues(stk_sub)
+valuetable_sub <- na.omit(valuetable_sub)
+summary(valuetable_sub)
+
+# wtf
+# datatable <- as.data.frame(stk)
+# datatable <- na.omit(datatable)
+# summary(datatable)
 
 ###change into a dataframe
-stk_10km <- as.data.frame(valuetable)
+stk_10km <- as.data.frame(valuetable_full)
 
 summary(stk_10km)
 
@@ -131,23 +142,60 @@ summary(stk_10km)
 
 ###plot the log transformed correlations
 ###intialization
-rbPal <- colorRampPalette(c('red','blue'))
+# rbPal <- colorRampPalette(c('red','blue'))
 #This adds a column of color values
 # based on the y values
-stk_10km$Col <- rbPal(5)[as.numeric(cut(stk_10km$Cstdist_largN,breaks = 5))]
-##plot
-plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_1)) 
-plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_2)) 
-plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_3)) 
-
 
 #--------------------#
 #--- Linear model ---#
 #--------------------#
-fit_10km <- lm(log(PAD_PPL_1) ~ log(PAD_PPL_2) + log(PAD_PPL_3) + log(pad_pano) + log(Cstdist_largN) + log(sml_cstN) + log(StatesN) + log(RegionsN), data=stk_10km)
-fit_10km$coefficients # these are you parameters
-summary(fit_10km)
-plot(fit_10km)
+# Bin 1
+fit_10km_1 <- lm(log(PAD_PPL_1) ~  log(pad_pano), data=stk_10km)
+fit_10km_1$coefficients # these are your parameters
+summary(fit_10km_1)
+
+# Bin 2
+fit_10km_2 <- lm(log(PAD_PPL_2) ~  log(pad_pano), data=stk_10km)
+fit_10km_2$coefficients # these are your parameters
+summary(fit_10km_2)
+
+# Bin 3
+fit_10km_3 <- lm(log(PAD_PPL_3) ~  log(pad_pano), data=stk_10km)
+fit_10km_3$coefficients # these are your parameters
+summary(fit_10km_3)
+
+# Plots
+par(mfrow=c(2,2)) 
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_1), xlab="Log-transformed Panoramio data", ylab="Log-transformed PPL reservation data", main="Pano / PPL lm plot, bin 1 (0-50 miles)") 
+abline(fit_10km_1, col='red')
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_2), xlab="Log-transformed Panoramio data", ylab="Log-transformed PPL reservation data", main="Pano / PPL lm plot, bin 2 (50-600 miles)") 
+abline(fit_10km_2, col='red')
+plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_3), xlab="Log-transformed Panoramio data", ylab="Log-transformed PPL reservation data", main="Pano / PPL lm plot, bin 3 (> 600 miles)") 
+abline(fit_10km_3, col='red')
+dev.off()
+
+# PCA
+fit <- princomp(stk_10km, cor=TRUE)
+summary(fit) # print variance accounted for 
+loadings(fit) # pc loadings 
+plot(fit,type="lines") # scree plot 
+fit$scores # the principal components
+
+biplot(fit)
+par(mfrow=c(1,2))
+biplot(fit, choices = 1:2)
+biplot(fit, choices = 3:4)
+dev.off()
+
+##-------##
+#-- GLM --#
+##-------##
+# Bin 1
+glm_fit_10km_1 <- glm(log(PAD_PPL_1) ~  log(pad_pano) + StatesN + DivisionsN + RegionsN, data=stk_10km, family=poisson())
+glm_fit_10km_1$coefficients # these are your parameters
+summary(glm_fit_10km_1)
+
+
 # data prep #
 # one way to fit a power law is to log10 transformal both variables.  
 # However, we want to use the natural log as this was the Nature paper's approach
@@ -182,16 +230,14 @@ plot(fit_10km)
 rbPal <- colorRampPalette(c('red','blue'))
 # based on the y values
 ###cost distance
-stk_2008_10km$Col <- rbPal(10)[as.numeric(cut(stk_2008_10km$Cstdist_largN,breaks = 10))]
-
-stk_2008_10km$Col <- rbPal(10)[as.numeric(cut(stk_2008_10km$Ag_US10kmN,breaks = 10))]
-
-stk_2008_10km$Col <- rbPal(10)[as.numeric(cut(stk_2008_10km$sec00_bachplus_ofge25_pct,breaks = 10))]
+stk_10km$Col <- rbPal(10)[as.numeric(cut(stk_10km$Cstdist_largN,breaks = 10))]
+stk_10km$Col <- rbPal(10)[as.numeric(cut(stk_10km$Ag_US10kmN,breaks = 10))]
+stk_10km$Col <- rbPal(10)[as.numeric(cut(stk_10km$sec00_bachplus_ofge25_pct,breaks = 10))]
 
 
 plot(log(stk_10km$pad_pano), log(stk_10km$PAD_PPL_1), col=stk_10km$Col)
-fit2008_10km <- lm(Pano2008_10km ~ Park_2008_10km , data=stk_2008_10km)
-r10km2008<-summary(fit2008_10km)$r.squared
+fit_10km <- lm(Pano_10km ~ Park_10km , data=stk_10km)
+r10km <-summary(fit_10km)$r.squared
 
 
 ###PCA for choosing variables for Multilevel model
