@@ -4,21 +4,60 @@ for (package in c('lubridate',
                   'data.table',
                   'sp',
                   'rgdal',
-                  'sqldf')) {
+                  'sqldf',
+                  'raster')) {
   if (!require(package, character.only=T, quietly=T)) {
     install.packages(package, repos="http://cran.us.r-project.org")
     library(package, character.only=T)
   }
 }
-list.files()
+
+source("shp_2_raster.R")
+
 dir <- "F:\\Parks_Paper\\PPL"
 setwd(dir)
 
+dir2 <- "F:\\Parks_Paper\\NRRS_PPL\\NRRS_PPL.gdb"
+
+ogrListLayers(dir2)
+NRRS_PPL_1 <- readOGR("NRRS_PPL_1", dsn=dir2)
+NRRS_PPL_2 <- readOGR("NRRS_PPL_2", dsn=dir2)
+NRRS_PPL_3 <- readOGR("NRRS_PPL_3", dsn=dir2)
+
+NRRS_PPL_1.dat <- as.data.frame(NRRS_PPL_1@data)
+NRRS_PPL_2.dat <- as.data.frame(NRRS_PPL_2@data)
+NRRS_PPL_3.dat <- as.data.frame(NRRS_PPL_3@data)
+
+NRRS_PPL.dat <- NRRS_PPL_1.dat
+NRRS_PPL.dat$PPL_Freq2 <- NRRS_PPL_2.dat[,c("PPL_Freq")]
+NRRS_PPL.dat$PPL_Freq3 <- NRRS_PPL_3.dat[,c("PPL_Freq")]
+head(NRRS_PPL.dat)
+
+NRRS_PPL.dat$PPL_Freq_Full <- rowSums(NRRS_PPL.dat[,c("PPL_Freq", "PPL_Freq2", "PPL_Freq3")])
+drops <- c("PPL_Freq","PPL_Freq2","PPL_Freq3")
+NRRS_PPL.dat <- NRRS_PPL.dat[ , !(names(NRRS_PPL.dat) %in% drops)]
+NRRS_PPL_1@data <- NRRS_PPL.dat
+NRRS_PPL.pooled <- NRRS_PPL_1
+head(NRRS_PPL.pooled)
+
+writeOGR(NRRS_PPL.pooled, dsn=dir, layer="NRRS_PPL_pooled", driver="ESRI Shapefile")
+
 # read PPL reservation data
 PPL <- read.csv('PPL_reservationdata.csv')
+PPL.rast <- rasterize(as.data.frame(PPL[,c("parklon", "parklat")]))
+
+# coordinates(PPL) <- c("parklon", "parklat")
+# proj4string(PPL) <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+# writeOGR(PPL, dsn=dir ,layer="PPL",driver="ESRI Shapefile")
 
 # Bin dataframe
 travel <- as.data.frame(PPL$traveldist)
+# summary(travel)
+# nrow(travel) = 12473816
+# NA's = 470524
+
+# 12473816 - 470524 = **12003292**
+
 # CUrrent cuts are at 50 miles and 600 miles (in km), leaving three bins, 0-50,50-600, 600-Inf
 travel.cuts <- as.data.frame(apply(travel, 2, cut, c(-Inf,c(80.4672, 965.606), Inf), labels=1:3))
 PPL <- cbind(PPL,travel.cuts)
@@ -28,6 +67,12 @@ colnames(PPL)[20] <- c("TravelBins")
 PPL.1 <- subset(PPL, TravelBins %in% c("1"))
 PPL.2 <- subset(PPL, TravelBins %in% c("2"))
 PPL.3 <- subset(PPL, TravelBins %in% c("3"))
+
+# nrow(PPL.1) = 4732053
+# nrow(PPL.2) = 6220545
+# nrow(PPL.3) = 1050694
+
+# 4732053 + 6220545 + 1050694 = **12003292**
 
 # check travel distnaces in bins
 hist(PPL.1$traveldist)
@@ -51,6 +96,9 @@ PPL.3 <- add_column(PPL.3, day(dmy(PPL.3$StartDate)), .after = "StartDate")
 setnames(PPL.3, old = c("day(dmy(PPL.3$StartDate))","month(dmy(PPL.3$StartDate))","year(dmy(PPL.3$StartDate))"), new = c("StartDay","StartMonth","StartYear"))
 
 # make list of binned data frames
+# THIS REDUCES THE NUMBER OF RECORDS IN THE OVERALL DATABASE
+# BECASUE WE'RE ONLY INTERSTED IN YEARS 2008-2014
+# BECASUE THAT'S WHAT WE HAVE PANORAMIO DATA AVAILABLE FOR!
 PPL.list <- list(PPL.1,PPL.2,PPL.3)
 PPL.years <- c(2008:2014)
 
@@ -65,9 +113,12 @@ PPL.years <- c(2008:2014)
 #   }
 # }
 
+
 for(i in 1:length(PPL.list)){
   PPL.df <- PPL.list[[i]]
   PPL.file <- paste0("PPL_",i, ".csv")
   print(paste0("writing file: ", PPL.file))
   write.csv(PPL.df, paste0(dir, "\\", PPL.file), row.names=FALSE)
 }
+
+
