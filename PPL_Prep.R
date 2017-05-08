@@ -73,8 +73,6 @@ setnames(PPL.3, old = c("day(dmy(PPL.3$StartDate))","month(dmy(PPL.3$StartDate))
 # THIS REDUCES THE NUMBER OF RECORDS IN THE OVERALL DATABASE
 # BECASUE WE'RE ONLY INTERSTED IN YEARS 2008-2014
 # BECASUE THAT'S WHAT WE HAVE PANORAMIO DATA AVAILABLE FOR!
-PPL.list <- list(PPL.1,PPL.2,PPL.3)
-PPL.years <- c(2008:2014)
 
 # subset by year
 PPL.1 <- subset(PPL.1, StartYear %in% PPL.years)
@@ -97,6 +95,8 @@ PPL.3 <- subset(PPL.3, StartYear %in% PPL.years)
 #   }
 # }
 
+PPL.list <- list(PPL.1,PPL.2,PPL.3)
+PPL.years <- c(2008:2014)
 
 for(i in 1:length(PPL.list)){
   PPL.df <- PPL.list[[i]]
@@ -104,6 +104,7 @@ for(i in 1:length(PPL.list)){
   print(paste0("writing file: ", PPL.file))
   write.csv(PPL.df, paste0(dir, "\\", PPL.file), row.names=FALSE)
 }
+
 
 ##--------------------##
 ## Pooled Raster code ##
