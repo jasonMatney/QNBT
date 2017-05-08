@@ -17,35 +17,9 @@ source("shp_2_raster.R")
 dir <- "F:\\Parks_Paper\\PPL"
 setwd(dir)
 
-dir2 <- "F:\\Parks_Paper\\NRRS_PPL\\NRRS_PPL.gdb"
-
-ogrListLayers(dir2)
-NRRS_PPL_1 <- readOGR("NRRS_PPL_1", dsn=dir2)
-NRRS_PPL_2 <- readOGR("NRRS_PPL_2", dsn=dir2)
-NRRS_PPL_3 <- readOGR("NRRS_PPL_3", dsn=dir2)
-
-NRRS_PPL_1.dat <- as.data.frame(NRRS_PPL_1@data)
-NRRS_PPL_2.dat <- as.data.frame(NRRS_PPL_2@data)
-NRRS_PPL_3.dat <- as.data.frame(NRRS_PPL_3@data)
-
-NRRS_PPL.dat <- NRRS_PPL_1.dat
-NRRS_PPL.dat$PPL_Freq2 <- NRRS_PPL_2.dat[,c("PPL_Freq")]
-NRRS_PPL.dat$PPL_Freq3 <- NRRS_PPL_3.dat[,c("PPL_Freq")]
-head(NRRS_PPL.dat)
-
-NRRS_PPL.dat$PPL_Freq_Full <- rowSums(NRRS_PPL.dat[,c("PPL_Freq", "PPL_Freq2", "PPL_Freq3")])
-drops <- c("PPL_Freq","PPL_Freq2","PPL_Freq3")
-NRRS_PPL.dat <- NRRS_PPL.dat[ , !(names(NRRS_PPL.dat) %in% drops)]
-NRRS_PPL_1@data <- NRRS_PPL.dat
-NRRS_PPL.pooled <- NRRS_PPL_1
-head(NRRS_PPL.pooled)
-
-writeOGR(NRRS_PPL.pooled, dsn=dir, layer="NRRS_PPL_pooled", driver="ESRI Shapefile")
-
 # read PPL reservation data
 PPL <- read.csv('PPL_reservationdata.csv')
-PPL.rast <- rasterize(as.data.frame(PPL[,c("parklon", "parklat")]))
-
+# PPL.rast <- rasterize(as.data.frame(PPL[,c("parklon", "parklat")]))
 # coordinates(PPL) <- c("parklon", "parklat")
 # proj4string(PPL) <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 # writeOGR(PPL, dsn=dir ,layer="PPL",driver="ESRI Shapefile")
@@ -102,6 +76,16 @@ setnames(PPL.3, old = c("day(dmy(PPL.3$StartDate))","month(dmy(PPL.3$StartDate))
 PPL.list <- list(PPL.1,PPL.2,PPL.3)
 PPL.years <- c(2008:2014)
 
+# subset by year
+PPL.1 <- subset(PPL.1, StartYear %in% PPL.years)
+PPL.2 <- subset(PPL.2, StartYear %in% PPL.years)
+PPL.3 <- subset(PPL.3, StartYear %in% PPL.years)
+
+# nrow(PPL.1) = 4032209
+# nrow(PPL.2) = 5064453
+# nrow(PPL.3) = 801423
+# 4032209 + 5064453 + 801423 = 9898085 
+
 # Loop through each year of each binned data frame and write csv
 # for(i in 1:length(PPL.list)){
 #   PPL.df <- PPL.list[[i]]
@@ -121,4 +105,32 @@ for(i in 1:length(PPL.list)){
   write.csv(PPL.df, paste0(dir, "\\", PPL.file), row.names=FALSE)
 }
 
+##--------------------##
+## Pooled Raster code ##
+##--------------------##
+
+dir2 <- "F:\\Parks_Paper\\NRRS_PPL\\NRRS_PPL.gdb"
+
+ogrListLayers(dir2)
+NRRS_PPL_1 <- readOGR("NRRS_PPL_1", dsn=dir2)
+NRRS_PPL_2 <- readOGR("NRRS_PPL_2", dsn=dir2)
+NRRS_PPL_3 <- readOGR("NRRS_PPL_3", dsn=dir2)
+
+NRRS_PPL_1.dat <- as.data.frame(NRRS_PPL_1@data)
+NRRS_PPL_2.dat <- as.data.frame(NRRS_PPL_2@data)
+NRRS_PPL_3.dat <- as.data.frame(NRRS_PPL_3@data)
+
+NRRS_PPL.dat <- NRRS_PPL_1.dat
+NRRS_PPL.dat$PPL_Freq2 <- NRRS_PPL_2.dat[,c("PPL_Freq")]
+NRRS_PPL.dat$PPL_Freq3 <- NRRS_PPL_3.dat[,c("PPL_Freq")]
+head(NRRS_PPL.dat)
+
+NRRS_PPL.dat$PPL_Freq_Full <- rowSums(NRRS_PPL.dat[,c("PPL_Freq", "PPL_Freq2", "PPL_Freq3")])
+drops <- c("PPL_Freq","PPL_Freq2","PPL_Freq3")
+NRRS_PPL.dat <- NRRS_PPL.dat[ , !(names(NRRS_PPL.dat) %in% drops)]
+NRRS_PPL_1@data <- NRRS_PPL.dat
+NRRS_PPL.pooled <- NRRS_PPL_1
+head(NRRS_PPL.pooled)
+
+writeOGR(NRRS_PPL.pooled, dsn=dir, layer="NRRS_PPL_pooled", driver="ESRI Shapefile")
 
