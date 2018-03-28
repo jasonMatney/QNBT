@@ -70,50 +70,44 @@ for park in parks:
                     sumDurList.append(int(row[14]))
                     rowCount += 1
 
-                print "Percentiles!~25"
-                print np.percentile(qdisList, 25)
-                print "Percentiles!~50"
-                print np.percentile(qdisList, 50)
-                print "Percentiles!~75"
-                print np.percentile(qdisList, 75)
+                if not parkLatList:
+                    print "park {0} year {1} month {2} is empty".format(park, year, month)
+                else:
+                    parkLat = parkLatList[0]
+                    parkLong = parkLongList[0]
+                    qnum25 = float(np.percentile(qnumList, 25))
+                    qnum50 = float(np.percentile(qnumList, 50))
+                    qnum75 = float(np.percentile(qnumList, 75))
+                    qldt25 = float(np.percentile(qldtList, 25))
+                    qldt50 = float(np.percentile(qldtList, 50))
+                    qldt75 = float(np.percentile(qldtList, 75))
+                    qdur25 = float(np.percentile(qdurList, 25))
+                    qdur50 = float(np.percentile(qdurList, 50))
+                    qdur75 = float(np.percentile(qdurList, 75))
+                    qdis25 = float(np.percentile(qdisList, 25))
+                    qdis50 = float(np.percentile(qdisList, 50))
+                    qdis75 = float(np.percentile(qdisList, 75))
+                    numRes = rowCount
+                    sumDur = int(np.sum(sumDurList))
+                    persNight = int(np.sum(sumDurList)) * int(np.sum(numPplList))
 
-                parkLat = parkLatList[0]
-                parkLong = parkLongList[0]
-                qnum25 = float(np.percentile(qnumList, 25))
-                qnum50 = float(np.percentile(qnumList, 50))
-                qnum75 = float(np.percentile(qnumList, 75))
-                qldt25 = float(np.percentile(qldtList, 25))
-                qldt50 = float(np.percentile(qldtList, 50))
-                qldt75 = float(np.percentile(qldtList, 75))
-                qdur25 = float(np.percentile(qdurList, 25))
-                qdur50 = float(np.percentile(qdurList, 50))
-                qdur75 = float(np.percentile(qdurList, 75))
-                qdis25 = float(np.percentile(qdisList, 25))
-                qdis50 = float(np.percentile(qdisList, 50))
-                qdis75 = float(np.percentile(qdisList, 75))
-                numRes = rowCount
-                sumDur = int(np.sum(sumDurList))
-                persNight = int(np.sum(sumDurList)) * int(np.sum(numPplList))
+                    writer.writerow([park, year, month,
+                                     parkLat, parkLong,
+                                     qnum25, qnum50, qnum75,
+                                     qldt25, qldt50, qldt75,
+                                     qdur25, qdur50, qdur75,
+                                     qdis25, qdis50, qdis75,
+                                     numRes, sumDur, persNight])
 
-                writer.writerow([park, year, month,
-                                 parkLat, parkLong,
-                                 qnum25, qnum50, qnum75,
-                                 qldt25, qldt50, qldt75,
-                                 qdur25, qdur50, qdur75,
-                                 qdis25, qdis50, qdis75,
-                                 numRes, sumDur, persNight])
-
-                del parkLatList
-                del parkLongList
-                del numPplList
-                del qnumList
-                del qldtList
-                del qdurList
-                del qdisList
-                del numResList
-                del sumDurList
-                del persNightList
+                    del parkLatList
+                    del parkLongList
+                    del numPplList
+                    del qnumList
+                    del qldtList
+                    del qdurList
+                    del qdisList
+                    del numResList
+                    del sumDurList
+                    del persNightList
 
 f.close()
-
-
